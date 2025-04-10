@@ -207,7 +207,7 @@ class TavilyClient {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
-        const apiKey = tavilyApiKey || getAuthValue(request, "TAVILY_API_KEY");
+        const apiKey = getAuthValue(request, "TAVILY_API_KEY") || tavilyApiKey;
         if (!apiKey) {
           throw new Error("TAVILY_API_KEY not set");
         }
@@ -301,8 +301,6 @@ class TavilyClient {
 
       this.axiosInstance.defaults.headers.common['x-api-key'] = apiKey;
 
-      console.log("searchParams", searchParams, apiKey);
-      
       const response = await this.axiosInstance.post(endpoint, searchParams);
       return response.data;
     } catch (error: any) {
