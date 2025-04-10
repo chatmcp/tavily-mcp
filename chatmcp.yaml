@@ -1,0 +1,34 @@
+name: tavily
+
+params:
+  type: object
+  properties:
+    TAVILY_API_KEY:
+      type: string
+      description: Tavily API Key
+  required:
+    - TAVILY_API_KEY
+ 
+rest:
+  name: tavily
+  port: 9593
+  endpoint: /rest
+ 
+npx:
+  command: >-
+    TAVILY_API_KEY={TAVILY_API_KEY} npx -y tavily-mcp
+  config: >-
+    {
+      "mcpServers": {
+        "tavily-mcp": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "tavily-mcp"
+          ],
+          "env": {
+            "TAVILY_API_KEY": "YOUR_API_KEY_HERE"
+          }
+        }
+      }
+    }

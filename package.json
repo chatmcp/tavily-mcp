@@ -40,9 +40,10 @@
   "author": "Tavily",
   "license": "MIT",
   "dependencies": {
+    "@chatmcp/sdk": "^1.0.5",
     "@modelcontextprotocol/sdk": "0.6.0",
-    "dotenv": "^16.4.5",
-    "axios": "^1.6.7"
+    "axios": "^1.6.7",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

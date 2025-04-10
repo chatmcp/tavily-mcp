@@ -6,14 +6,21 @@ import {CallToolRequestSchema, ListToolsRequestSchema, Tool} from "@modelcontext
 import axios from "axios";
 import dotenv from "dotenv";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { getParamValue, getAuthValue } from "@chatmcp/sdk/utils/index.js";
+import { RestServerTransport } from "@chatmcp/sdk/server/rest.js";
 
 dotenv.config();
 
-const API_KEY = process.env.TAVILY_API_KEY;
-if (!API_KEY) {
-  throw new Error("TAVILY_API_KEY environment variable is required");
-}
+// const API_KEY = process.env.TAVILY_API_KEY;
+// if (!API_KEY) {
+//   throw new Error("TAVILY_API_KEY environment variable is required");
+// }
 
+const tavilyApiKey = getParamValue("tavily_api_key") || "";
+ 
+const mode = getParamValue("mode") || "stdio";
+const port = getParamValue("port") || 9593;
+const endpoint = getParamValue("endpoint") || "/rest";
 
 interface TavilyResponse {
   // Response structure from Tavily API
@@ -62,7 +69,7 @@ class TavilyClient {
       headers: {
         'accept': 'application/json',
         'content-type': 'application/json',
-        'x-api-key': API_KEY
+        // 'x-api-key': apiKey
       }
     });
 
@@ -200,12 +207,17 @@ class TavilyClient {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
+        const apiKey = tavilyApiKey || getAuthValue(request, "TAVILY_API_KEY");
+        if (!apiKey) {
+          throw new Error("TAVILY_API_KEY not set");
+        }
+
         let response: TavilyResponse;
         const args = request.params.arguments ?? {};
 
         switch (request.params.name) {
           case "tavily-search":
-            response = await this.search({
+            response = await this.search(apiKey, {
               query: args.query,
               search_depth: args.search_depth,
               topic: args.topic,
@@ -221,7 +233,7 @@ class TavilyClient {
             break;
           
           case "tavily-extract":
-            response = await this.extract({
+            response = await this.extract(apiKey, {
               urls: args.urls,
               extract_depth: args.extract_depth,
               include_images: args.include_images
@@ -258,12 +270,24 @@ class TavilyClient {
 
 
   async run(): Promise<void> {
+    if (mode === "rest") {
+      const transport = new RestServerTransport({
+        port,
+        endpoint,
+      });
+      await this.server.connect(transport);
+ 
+      await transport.startServer();
+ 
+      return;
+    }
+
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     console.error("Tavily MCP server running on stdio");
   }
 
-  async search(params: any): Promise<TavilyResponse> {
+  async search(apiKey: string, params: any): Promise<TavilyResponse> {
     try {
       // Choose endpoint based on whether it's an extract request
       const endpoint = params.url ? this.baseURLs.extract : this.baseURLs.search;
@@ -271,9 +295,11 @@ class TavilyClient {
       // Add topic: "news" if query contains the word "news"
       const searchParams = {
         ...params,
-        api_key: API_KEY,
+        api_key: apiKey,
         topic: params.query.toLowerCase().includes('news') ? 'news' : undefined
       };
+
+      this.axiosInstance.defaults.headers.common['x-api-key'] = apiKey;
       
       const response = await this.axiosInstance.post(endpoint, searchParams);
       return response.data;
@@ -287,11 +313,13 @@ class TavilyClient {
     }
   }
 
-  async extract(params: any): Promise<TavilyResponse> {
+  async extract(apiKey: string, params: any): Promise<TavilyResponse> {
     try {
+      this.axiosInstance.defaults.headers.common['x-api-key'] = apiKey;
+
       const response = await this.axiosInstance.post(this.baseURLs.extract, {
         ...params,
-        api_key: API_KEY
+        api_key: apiKey
       });
       return response.data;
     } catch (error: any) {
