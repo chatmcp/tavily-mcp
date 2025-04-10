@@ -300,6 +300,8 @@ class TavilyClient {
       };
 
       this.axiosInstance.defaults.headers.common['x-api-key'] = apiKey;
+
+      console.log("searchParams", searchParams, apiKey);
       
       const response = await this.axiosInstance.post(endpoint, searchParams);
       return response.data;
